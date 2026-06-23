@@ -1,0 +1,706 @@
+# Load packages
+library(dplyr)    # for data manipulation
+library(ggplot2)
+library(tidyr)
+library(purrr)
+
+# 1. Read data-----
+
+# Set your path to the Excel file
+df <- readRDS("~/Telemed/0623_clean.rds")
+
+# Keep only teleconsultation group
+tele_df <- df %>%
+  filter(tele_num >= 1,
+         !is.na(f_ax_date))
+summary(tele_df)
+
+# Helper: recode one SOPEQ item (baseline + follow-up) to numeric (ordinal) and NA out 'not applicable'
+recode_sopeq_item <- function(data, bl_var, f_var, keep_levels) {
+  # keep_levels: numeric vector of codes that are part of the ordered satisfaction scale
+  # other codes will be set to NA for the Wilcoxon analysis
+  
+  out <- data %>%
+    select(all_of(c(bl_var, f_var)))
+  
+  # Set to NA if not in keep_levels
+  out[[bl_var]][!out[[bl_var]] %in% keep_levels] <- NA
+  out[[f_var]][!out[[f_var]] %in% keep_levels] <- NA
+  
+  # Return only rows with paired non-NA
+  out <- out %>% drop_na(all_of(c(bl_var, f_var)))
+  
+  out
+}
+
+# Example
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_2",
+  f_var       = "sopeq_f_2",
+  keep_levels = 1:3
+)
+
+# Wilcoxon signed-rank test on numeric codes
+wilcox.test(item_data$sopeq_b_2,
+            item_data$sopeq_f_2,
+            paired = TRUE,
+            exact  = FALSE)
+
+# Wilcoxon test for all questions-----
+# Specification for each SOPEQ item you want to test
+# (Fill in with the correct variable names and keep_levels per item)
+sopeq_specs <- tibble::tibble(
+  item_name  = c("Q2_wait_time",
+                 "Q19_dr_awareness",
+                 "Q4_duration",
+                 "Q21_enough_time",
+                 "Q22_explain_reasons",
+                 "Q23_listen_views",
+                 "Q24_clear_ans",
+                 "Q25_trust",
+                 "Q29_explain",
+                 "Q30_involved",
+                 "Q32_introduce",
+                 "Q33_information",
+                 "Q34_fear",
+                 "Q35_family_info",
+                 "Q36_family_talk",
+                 "Q38_explain_meds",
+                 "Q39_explain_med_purpose",
+                 "Q40_med_SE",
+                 "Q41_med_info",
+                 "Q42_danger_sign",
+                 "Q47_sat",
+                 "Q48_manage",
+                 "Q49_respect",
+                 "Q50_privacy",
+                 "Q51_care",
+                 "Q52_dr_rate",
+                 "Q53_complain"
+                 # ... add more as needed
+  ),
+  bl_var     = c("sopeq_b_2",
+                 "sopeq_b_3",
+                 "sopeq_b_4",
+                 "sopeq_b_5",
+                 "sopeq_b_6",
+                 "sopeq_b_7",
+                 "sopeq_b_8",
+                 "sopeq_b_9",
+                 "sopeq_b_10",
+                 "sopeq_b_11",
+                 "sopeq_b_12",
+                 "sopeq_b_13",
+                 "sopeq_b_14",
+                 "sopeq_b_15",
+                 "sopeq_b_16",
+                 "sopeq_b_17",
+                 "sopeq_b_18",
+                 "sopeq_b_19",
+                 "sopeq_b_20",
+                 "sopeq_b_21",
+                 "sopeq_b_22",
+                 "sopeq_b_23",
+                 "sopeq_b_24",
+                 "sopeq_b_25",
+                 "sopeq_b_26",
+                 "sopeq_b_27",
+                 "sopeq_b_28"
+                 # ... complete mapping
+  ),
+  f_var      = c("sopeq_f_2",
+                 "sopeq_f_3",
+                 "sopeq_f_4",
+                 "sopeq_f_5",
+                 "sopeq_f_6",
+                 "sopeq_f_7",
+                 "sopeq_f_8",
+                 "sopeq_f_9",
+                 "sopeq_f_10",
+                 "sopeq_f_11",
+                 "sopeq_f_12",
+                 "sopeq_f_13",
+                 "sopeq_f_14",
+                 "sopeq_f_15",
+                 "sopeq_f_16",
+                 "sopeq_f_17",
+                 "sopeq_f_18",
+                 "sopeq_f_19",
+                 "sopeq_f_20",
+                 "sopeq_f_21",
+                 "sopeq_f_22",
+                 "sopeq_f_23",
+                 "sopeq_f_24",
+                 "sopeq_f_25",
+                 "sopeq_f_26",
+                 "sopeq_f_27",
+                 "sopeq_f_28"
+                 # ... complete mapping
+  ),
+  # For each item, define which numeric codes are part of the ordinal satisfaction scale
+  # Example: 1=best, 2=middle, 3=worst; codes 4+ are 'not applicable'
+  keep_levels = list(
+    1:4, # Q2
+    1:3, # Q3/19
+    1:4, # Q4
+    1:4, # Q5/21 (if 5 is NA)
+    1:3, # Q6/22
+    1:3, # Q7/23
+    1:3, # Q8/24
+    1:3, # Q9/25
+    1:4, # Q10/29
+    1:3, # Q11/30
+    1:3, # Q12/32
+    1:4, # Q13/33
+    1:3, # Q14/34
+    1:3, # Q15/35
+    1:3, # Q16/36
+    1:3, # Q17/38
+    1:3, # Q18/39
+    1:3, # Q19/40
+    1:3, # Q20/41
+    1:3, # Q21/42
+    1:3, # Q22/47
+    1:3, # Q23/48
+    1:3, # Q24/49
+    1:3, # Q25/50
+    1:3, # Q26/51
+    1:5, # Q27/52
+    1:3 # Q28/56
+  )
+)
+
+# Function: run Wilcoxon and compute medians
+analyze_sopeq_item <- function(bl_var, f_var, keep_levels) {
+  item_df <- recode_sopeq_item(tele_df, bl_var, f_var, keep_levels)
+  
+  if (nrow(item_df) == 0) {
+    return(
+      tibble::tibble(
+        n_paired   = 0,
+        median_BL  = NA_real_,
+        median_F   = NA_real_,
+        V          = NA_real_,
+        p_value    = NA_real_
+      )
+    )
+  }
+  
+  wt <- suppressWarnings(
+    wilcox.test(item_df[[f_var]],
+                item_df[[bl_var]],
+                paired = TRUE,
+                exact  = FALSE)
+  )
+  
+  tibble::tibble(
+    n_paired   = nrow(item_df),
+    median_BL  = median(item_df[[bl_var]], na.rm = TRUE),
+    median_F   = median(item_df[[f_var]], na.rm = TRUE),
+    V          = unname(wt$statistic),
+    p_value    = wt$p.value
+  )
+}
+
+# Apply to all items
+sopeq_results <- sopeq_specs %>%
+  mutate(
+    res = pmap(
+      list(bl_var, f_var, keep_levels),
+      ~ analyze_sopeq_item(..1, ..2, ..3)
+    )
+  ) %>%
+  unnest(res)
+
+print(sopeq_results, n = 60)
+
+### Graphical representation------
+
+plot_bl_f_hist <- function(data, bl_var, f_var,
+                           binwidth = 1,
+                           x_label = NULL,
+                           title  = NULL) {
+  # bl_var and f_var should be strings with column names
+  
+  # Default labels if not supplied
+  if (is.null(x_label)) x_label <- "Value"
+  if (is.null(title)) {
+    title <- paste0("Distribution of ", bl_var, " and ", f_var,
+                    "\n(Teleconsultation group)")
+  }
+  
+  plot_df <- data %>%
+    select(
+      Baseline  = all_of(bl_var),
+      Final = all_of(f_var)
+    ) %>%
+    pivot_longer(cols = c(Baseline, Final),
+                 names_to  = "Time",
+                 values_to = "Value")
+  
+  ggplot(plot_df, aes(x = Value)) +
+    geom_histogram(binwidth = binwidth,
+                   color = "black",
+                   fill  = "pink3") +
+    scale_x_continuous(breaks = scales::pretty_breaks()) +
+    stat_bin(binwidth = binwidth,
+             geom = "text",
+             aes(label = after_stat(count)),
+             vjust = -0.3,
+             color = "black") +
+    facet_wrap(~ Time, nrow = 1) +
+    labs(
+      title = title,
+      x     = x_label,
+      y     = "Number of participants"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      strip.text = element_text(face = "bold")
+    )
+}
+  
+
+### Q2
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_2",
+  f_var       = "sopeq_f_2",
+  keep_levels = 1:4
+)
+
+# Optional: recode to ordered labels for tables/plots
+item_data <- item_data %>%
+  mutate(
+    Q2_BL = factor(sopeq_b_2,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Less than half an hour",
+                                "Half an hour to 1 hour",
+                                "1 to 2 hours", "More than 2 hours"),
+                    ordered = TRUE),
+    Q2_F  = factor(sopeq_f_2,
+                   levels  = c(1, 2, 3, 4),
+                   labels  = c("Less than half an hour",
+                               "Half an hour to 1 hour",
+                               "1 to 2 hours", "More than 2 hours"),
+                   ordered = TRUE),
+  )
+
+plot_q2 <- item_data %>%
+  select(Q2_BL, Q2_F) %>%
+  pivot_longer(cols = c(Q2_BL, Q2_F),
+               names_to  = "Time",
+               values_to = "Response") %>%
+  mutate(
+    Time = recode(Time,
+                  Q2_BL = "Baseline",
+                  Q2_F  = "Final")
+  )
+
+ggplot(plot_q2, aes(x = Response)) +
+  geom_bar(fill = "pink2", color = "black") +
+  facet_wrap(~ Time, nrow = 1) +
+  labs(
+    title = "Duration of waiting time before seeing doctor \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Duration of waiting time",
+    y     = "Number of respondents"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+
+# stacked presentation
+plot_q2_prop <- plot_q2 %>%
+  group_by(Time, Response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Time) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(plot_q2_prop, aes(x = Time, y = prop, fill = Response)) +
+  geom_col(color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Duration of waiting time before seeing doctor \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "",
+    y     = "Percentage of respondents",
+    fill  = "Legend"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+
+  ### Q4
+
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_4",
+  f_var       = "sopeq_f_4",
+  keep_levels = 1:4
+)
+
+# Optional: recode to ordered labels for tables/plots
+item_data <- item_data %>%
+  mutate(
+    Q4_BL = factor(sopeq_b_4,
+                   levels  = c(1, 2, 3, 4),
+                   labels  = c("Less than 5 minutes",
+                               "5 to 10 minutes",
+                               "10 to 20 minutes", "More than 20 minutes"),
+                   ordered = TRUE),
+    Q4_F  = factor(sopeq_f_4,
+                   levels  = c(1, 2, 3, 4),
+                   labels  = c("Less than 5 minutes",
+                               "5 to 10 minutes",
+                               "10 to 20 minutes", "More than 20 minutes"),
+                   ordered = TRUE),
+  )
+
+plot_q4 <- item_data %>%
+  select(Q4_BL, Q4_F) %>%
+  pivot_longer(cols = c(Q4_BL, Q4_F),
+               names_to  = "Time",
+               values_to = "Response") %>%
+  mutate(
+    Time = recode(Time,
+                  Q4_BL = "Baseline",
+                  Q4_F  = "Final")
+  )
+
+ggplot(plot_q4, aes(x = Response)) +
+  geom_bar(fill = "pink2", color = "black") +
+  facet_wrap(~ Time, nrow = 1) +
+  labs(
+    title = "Duration of consultation time \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Duration of consultation time",
+    y     = "Number of respondents"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    strip.text = element_text(face = "bold"))
+  
+# stacked presentation
+plot_q4_prop <- plot_q4 %>%
+  group_by(Time, Response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Time) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(plot_q4_prop, aes(x = Time, y = prop, fill = Response)) +
+  geom_col(color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Duration of consultation time \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "",
+    y     = "Percentage of respondents",
+    fill  = "Legend"
+  ) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+### Q13
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_13",
+  f_var       = "sopeq_f_13",
+  keep_levels = 1:4
+)
+
+# recode to ordered labels for tables/plots
+item_data <- item_data %>%
+  mutate(
+    Q13_BL = factor(sopeq_b_13,
+                   levels  = c(1, 2, 3, 4),
+                   labels  = c("Right amount",
+                               "Too much",
+                               "Not enough", "I was not given any information about my treatment or condition"),
+                   ordered = TRUE),
+    Q13_F  = factor(sopeq_f_13,
+                   levels  = c(1, 2, 3, 4),
+                   labels  = c("Right amount",
+                               "Too much",
+                               "Not enough", "I was not given any information about my treatment or condition"),
+                   ordered = TRUE),
+  )
+
+plot_q13 <- item_data %>%
+  select(Q13_BL, Q13_F) %>%
+  pivot_longer(cols = c(Q13_BL, Q13_F),
+               names_to  = "Time",
+               values_to = "Response") %>%
+  mutate(
+    Time = recode(Time,
+                  Q13_BL = "Baseline",
+                  Q13_F  = "Final")
+  )
+
+ggplot(plot_q13, aes(x = Response)) +
+  geom_bar(fill = "pink2", color = "black") +
+  facet_wrap(~ Time, nrow = 1) +
+  labs(
+    title = "Information given about own condition or treatment \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Information given",
+    y     = "Number of respondents"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+
+# stacked presentation
+plot_q13_prop <- plot_q13 %>%
+  group_by(Time, Response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Time) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(plot_q13_prop, aes(x = Time, y = prop, fill = Response)) +
+  geom_col(color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Information given about own condition or treatment \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Information given",
+    y     = "Number of respondents",
+    fill  = "Legend"
+  ) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Pastel2") +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+
+### Q13
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_13",
+  f_var       = "sopeq_f_13",
+  keep_levels = 1:4
+)
+
+# recode to ordered labels for tables/plots
+item_data <- item_data %>%
+  mutate(
+    Q13_BL = factor(sopeq_b_13,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Right amount",
+                                "Too much",
+                                "Not enough", "I was not given any information about my treatment or condition"),
+                    ordered = TRUE),
+    Q13_F  = factor(sopeq_f_13,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Right amount",
+                                "Too much",
+                                "Not enough", "I was not given any information about my treatment or condition"),
+                    ordered = TRUE),
+  )
+
+plot_q13 <- item_data %>%
+  select(Q13_BL, Q13_F) %>%
+  pivot_longer(cols = c(Q13_BL, Q13_F),
+               names_to  = "Time",
+               values_to = "Response") %>%
+  mutate(
+    Time = recode(Time,
+                  Q13_BL = "Baseline",
+                  Q13_F  = "Final")
+  )
+
+ggplot(plot_q13, aes(x = Response)) +
+  geom_bar(fill = "pink2", color = "black") +
+  facet_wrap(~ Time, nrow = 1) +
+  labs(
+    title = "Information given about own condition or treatment \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Information given",
+    y     = "Number of respondents"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+
+# stacked presentation
+plot_q13_prop <- plot_q13 %>%
+  group_by(Time, Response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Time) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(plot_q13_prop, aes(x = Time, y = prop, fill = Response)) +
+  geom_col(color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Information given about own condition or treatment \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Information given",
+    y     = "Number of respondents",
+    fill  = "Legend"
+  ) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Pastel2") +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+
+### Q17/38
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_17",
+  f_var       = "sopeq_f_17",
+  keep_levels = 1:4
+)
+
+# recode to ordered labels for tables/plots
+item_data <- item_data %>%
+  mutate(
+    Q17_BL = factor(sopeq_b_17,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Yes, completely",
+                                "Yes, to some extent",
+                                "No", "I did not need an explanation"),
+                    ordered = TRUE),
+    Q17_F  = factor(sopeq_f_17,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Yes, completely",
+                                "Yes, to some extent",
+                                "No", "I did not need an explanation"),
+                    ordered = TRUE),
+  )
+
+plot_q17 <- item_data %>%
+  select(Q17_BL, Q17_F) %>%
+  pivot_longer(cols = c(Q17_BL, Q17_F),
+               names_to  = "Time",
+               values_to = "Response") %>%
+  mutate(
+    Time = recode(Time,
+                  Q17_BL = "Baseline",
+                  Q17_F  = "Final")
+  )
+
+ggplot(plot_q17, aes(x = Response)) +
+  geom_bar(fill = "pink2", color = "black") +
+  facet_wrap(~ Time, nrow = 1) +
+  labs(
+    title = "Explanation given on how to take medications \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Explanation given",
+    y     = "Number of respondents"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+
+# stacked presentation
+plot_q17_prop <- plot_q17 %>%
+  group_by(Time, Response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Time) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(plot_q17_prop, aes(x = Time, y = prop, fill = Response)) +
+  geom_col(color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Explanation given on how to take medications \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Explanation given",
+    y     = "Number of respondents",
+    fill  = "Legend"
+  ) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+### Q18/39
+item_data <- recode_sopeq_item(
+  data        = tele_df,
+  bl_var      = "sopeq_b_18",
+  f_var       = "sopeq_f_18",
+  keep_levels = 1:4
+)
+
+# recode to ordered labels for tables/plots
+item_data <- item_data %>%
+  mutate(
+    Q18_BL = factor(sopeq_b_18,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Yes, completely",
+                                "Yes, to some extent",
+                                "No", "I did not need an explanation"),
+                    ordered = TRUE),
+    Q18_F  = factor(sopeq_f_18,
+                    levels  = c(1, 2, 3, 4),
+                    labels  = c("Yes, completely",
+                                "Yes, to some extent",
+                                "No", "I did not need an explanation"),
+                    ordered = TRUE),
+  )
+
+plot_q18 <- item_data %>%
+  select(Q18_BL, Q18_F) %>%
+  pivot_longer(cols = c(Q18_BL, Q18_F),
+               names_to  = "Time",
+               values_to = "Response") %>%
+  mutate(
+    Time = recode(Time,
+                  Q18_BL = "Baseline",
+                  Q18_F  = "Final")
+  )
+
+ggplot(plot_q18, aes(x = Response)) +
+  geom_bar(fill = "pink2", color = "black") +
+  facet_wrap(~ Time, nrow = 1) +
+  labs(
+    title = "Explanation given on the purpose of medications \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Explanation given",
+    y     = "Number of respondents"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+
+# stacked presentation
+plot_q18_prop <- plot_q18 %>%
+  group_by(Time, Response) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Time) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(plot_q18_prop, aes(x = Time, y = prop, fill = Response)) +
+  geom_col(color = "black") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Explanation given on the purpose of medications \n 8 months pre-teleconsultation vs 8 months after (teleconsultation group)",
+    x     = "Explanation given",
+    y     = "Number of respondents",
+    fill  = "Legend"
+  ) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )

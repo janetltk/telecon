@@ -4,6 +4,15 @@ library(janitor)
 
 df <- readRDS("~/Telemed/0623_clean.rds")
 
+# Basic characteristics
+summary(df$age)
+summary(df$gender)
+summary(df$edu)
+summary(df$x1st_dx_group)
+summary(df$year_enter_lsch)
+summary(df$year_enter_lsch, na.rm = TRUE)
+summary(df$year_fu_tmmhc, na.rm = TRUE)
+
 # Comparison of n group
 
 #1. Age: numeric variable
@@ -187,7 +196,7 @@ age_sens_summary <- df %>%
     iqr    = IQR(age, na.rm = TRUE)
   )
 
-age_sens_ummary
+age_sens_summary
 
 #Check distribution quickly:
 

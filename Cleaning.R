@@ -121,4 +121,4 @@ table(df$pt_wish_is_yes)
 table(df$tele_sens_factor)
 
 # Save the cleaned data as an RDS (R internal format)
-saveRDS(df, file = "df_clean.rds")
+saveRDS(df, file = "0623_clean.rds")
