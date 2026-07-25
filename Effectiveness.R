@@ -6,11 +6,19 @@ library(tidyr)
 # 1. Read data-----
 
 # Set your path to the Excel file
-df <- readRDS("~/Telemed/0623_clean.rds")
+df <- readRDS("~/Telemed/0719_clean.rds")
 
 # Keep only teleconsultation group
 tele_df <- df %>%
   filter(tele_num >= 1)
+summary(tele_df)
+tele_df$bl_cgi <- as.numeric(tele_df$bl_cgi)
+tele_df$f_cgi <- as.numeric(tele_df$f_cgi)
+tele_df$bl_sat <- as.numeric(tele_df$bl_sat)
+tele_df$f_sat <- as.numeric(tele_df$f_sat)
+
+saveRDS(tele_df, file = "0719_tele.rds")
+tele_df <- readRDS("~/Telemed/0719_tele.rds")
 
 # Simple graphs
 # function
@@ -42,7 +50,7 @@ plot_bl_f_hist <- function(data, bl_var, f_var,
   ggplot(plot_df, aes(x = Value)) +
     geom_histogram(binwidth = binwidth,
                    color = "black",
-                   fill  = "pink4") +
+                   fill  = "pink3") +
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     stat_bin(binwidth = binwidth,
              geom = "text",
@@ -68,7 +76,7 @@ plot_bl_f_hist(
   f_var   = "f_opd",
   binwidth = 1,
   x_label = "Number of OPD attendances",
-  title   = "Number of OPD attendances in the 8 months pre-teleconsultation vs 8 months after teleconsultation \n(Teleconsultation group, n = 94)"
+  title   = "Number of OPD attendances in the 8 months pre-teleconsultation vs 8 months after incorporation of teleconsultation \n(Teleconsultation group, n = 96)"
 )
 
 plot_bl_f_hist(
@@ -77,7 +85,7 @@ plot_bl_f_hist(
   f_var   = "f_cgi",
   binwidth = 1,
   x_label = "CGI score",
-  title   = "Clinical Global Impressions (Severity) Scores in the \n 8 months pre-teleconsultation vs 8 months after teleconsultation \n(Teleconsultation group, n = 94)"
+  title   = "Clinical Global Impressions (Severity) Scores in the \n 8 months pre-teleconsultation vs 8 months after incorporation of teleconsultation \n(Teleconsultation group having completed both baseline and final assessments, n = 90)"
 )
 
 plot_bl_f_hist(
@@ -86,7 +94,7 @@ plot_bl_f_hist(
   f_var   = "f_honos",
   binwidth = 1,
   x_label = "HoNOS score",
-  title   = "Health of Nations Outcomes Scale Scores in the \n 8 months pre-teleconsultation vs 8 months after teleconsultation \n(Teleconsultation group, n = 94)"
+  title   = "Health of Nations Outcomes Scale Scores in the \n 8 months pre-teleconsultation vs 8 months after incorporation of teleconsultation \n(Teleconsultation group having completed both baseline and final assessments, n = 90)"
 )
 
 plot_bl_f_hist(
@@ -95,16 +103,17 @@ plot_bl_f_hist(
   f_var   = "f_swemwbs",
   binwidth = 1,
   x_label = "SWEMWBS Score",
-  title   = "Short Warwick Edinburgh Mental Well-being Scale Scores in the \n 8 months pre-teleconsultation vs 8 months after teleconsultation \n(Teleconsultation group, n = 94)"
+  title   = "Short Warwick Edinburgh Mental Well-being Scale Scores in the \n 8 months pre-teleconsultation vs 8 months after incorporation of teleconsultation \n(Teleconsultation group having completed both baseline and final assessments, n = 87)"
 )
      
+
 plot_bl_f_hist(
   data    = tele_df,
   bl_var  = "bl_sat",
   f_var   = "f_sat",
   binwidth = 1,
   x_label = "Satisfaction score",
-  title   = "Satisfaction score towards overall OPD experience in the 8 months pre-teleconsultation vs 8 months after teleconsultation \n(Teleconsultation group, n = 94)"
+  title   = "Satisfaction score towards overall OPD experience in the \n 8 months pre-teleconsultation vs 8 months after incorporation of teleconsultation \n(Teleconsultation group having completed both baseline and final assessments, n = 87)"
 )
 
 
@@ -166,7 +175,6 @@ norm_HONOS <- check_normality(tele_df, "bl_honos", "f_honos",  make_plots = TRUE
 norm_SWEMWBS <- check_normality(tele_df, "bl_swemwbs", "f_swemwbs",  make_plots = TRUE)
 norm_sat <- check_normality(tele_df, "bl_sat", "f_sat",  make_plots = TRUE)
 
-
 # 3. Paired t-tests for BL vs F-----
 
 # Function to run paired t-test and return a small summary data frame
@@ -219,13 +227,15 @@ paired_summary <- function(data, bl_var, f_var) {
 res_OPD <- paired_summary(tele_df, "bl_opd", "f_opd")
 res_BD  <- paired_summary(tele_df, "bl_bd",  "f_bd")
 res_AED <- paired_summary(tele_df, "bl_aed", "f_aed")
+res_EMW <- paired_summary(tele_df, "bl_emw", "f_emw")
 res_IP  <- paired_summary(tele_df, "bl_ip",  "f_ip")
 res_CGI <- paired_summary(tele_df, "bl_cgi",  "f_cgi")
 res_HONOS <- paired_summary(tele_df, "bl_honos", "f_honos")
 res_SWEMWBS <- paired_summary(tele_df, "bl_swemwbs", "f_swemwbs")
+res_sat <- paired_summary(tele_df, "bl_sat", "f_sat")
 
 # Combine all results into one table
-results <- bind_rows(res_OPD, res_BD, res_AED, res_IP, res_CGI, res_HONOS, res_SWEMWBS)
+results <- bind_rows(res_OPD, res_BD, res_AED, res_EMW, res_IP, res_CGI, res_HONOS, res_SWEMWBS, res_sat)
 results
 
 # 4. Wilcoxon signed‑rank tests-----
