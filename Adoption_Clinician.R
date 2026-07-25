@@ -3,6 +3,8 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(janitor)
+library(stringr)
+
 
 raw_data <- read_excel("Clinician Response 0725.xlsx") %>%
   clean_names()
@@ -105,8 +107,9 @@ ggplot(dist_item, aes(x = Item_label, y = Percent, fill = Score)) +
   geom_col(
     width = 0.6,
     position = position_stack(reverse = TRUE),
-    show.legend = TRUE
-  ) +
+    show.legend = TRUE,
+    colour = "black",   # black outline
+   ) +
   geom_text(
     aes(
       label = ifelse(Percent < 5, "", paste0(round(Percent), "%")),
@@ -334,7 +337,8 @@ ggplot(q8_dist, aes(x = Question, y = Percent, fill = Score)) +
   geom_col(
     width = 0.6,
     position = position_stack(reverse = TRUE),
-    show.legend = TRUE
+    show.legend = TRUE,
+    colour = "black"   # black outline
   ) +
   geom_text(
     aes(
@@ -444,7 +448,8 @@ ggplot(q8_dist, aes(x = Question, y = Percent, fill = Score)) +
   geom_col(
     width = 0.6,
     position = position_stack(reverse = TRUE),
-    show.legend = TRUE
+    show.legend = TRUE,
+    colour = "black"   # black outline
   ) +
   geom_text(
     aes(
@@ -598,6 +603,7 @@ likert_cols <- c(
 )
 
 # Plot
+
 ggplot(q7_plot) +
   geom_rect(
     aes(
@@ -607,7 +613,8 @@ ggplot(q7_plot) +
       ymax = as.numeric(Question) + 0.3,
       fill = Score_f
     ),
-    colour = "white"
+    colour = "black",
+    linewidth = 0.3
   ) +
   geom_text(
     aes(
@@ -618,6 +625,12 @@ ggplot(q7_plot) +
     size = 3,
     colour = "black"
   ) +
+  geom_vline(
+    xintercept = 0,
+    colour = "grey70",
+    linetype = "dashed",
+    linewidth = 0.3
+  ) +
   scale_y_continuous(
     breaks = seq_along(levels(q7_plot$Question)),
     labels = levels(q7_plot$Question),
@@ -626,7 +639,7 @@ ggplot(q7_plot) +
   scale_x_continuous(
     breaks = seq(-100, 100, 20),
     labels = function(x) paste0(abs(x), "%"),
-    limits = c(-100, 100),
+    limits = c(-80, 80),
     expand = c(0, 0)
   ) +
   scale_fill_manual(
@@ -651,159 +664,4 @@ ggplot(q7_plot) +
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
     legend.position = "right"
-  )
-
-
-#######################
-# Put all the graphs together
-
-
-# -------------------------
-# 1) LEGAL / ETHICAL
-# -------------------------
-q8_legal <- data %>%
-  select(x8a, x8b, x8c, x8d) %>%
-  mutate(Respondent = row_number()) %>%
-  pivot_longer(
-    cols = c(x8a, x8b, x8c, x8d),
-    names_to = "Item",
-    values_to = "Score"
-  ) %>%
-  mutate(
-    Domain = "Legal or ethical issues",
-    Item_label = recode(Item,
-                        "x8a" = "Ethical issues",
-                        "x8b" = "Data security",
-                        "x8c" = "Patient confidentiality",
-                        "x8d" = "Legal issues")
-  )
-
-# -------------------------
-# 2) TECHNOLOGICAL
-# -------------------------
-q8_tech <- data %>%
-  select(x8g, x8l) %>%
-  mutate(Respondent = row_number()) %>%
-  pivot_longer(
-    cols = c(x8g, x8l),
-    names_to = "Item",
-    values_to = "Score"
-  ) %>%
-  mutate(
-    Domain = "Technological issues",
-    Item_label = recode(Item,
-                        "x8g" = "Unfamiliarity with tech requirements",
-                        "x8l" = "Tech issues interrupting patient care")
-  )
-
-# -------------------------
-# 3) CLINICAL MANAGEMENT
-# -------------------------
-q8_clin <- data %>%
-  select(x8e, x8f, x8h, x8j, x8k) %>%
-  mutate(Respondent = row_number()) %>%
-  pivot_longer(
-    cols = c(x8e, x8f, x8h, x8j, x8k),
-    names_to = "Item",
-    values_to = "Score"
-  ) %>%
-  mutate(
-    Domain = "Clinical management difficulties",
-    Item_label = recode(Item,
-                        "x8e" = "Lack professional guidance",
-                        "x8f" = "Lack training",
-                        "x8h" = "Need to adjust interview styles",
-                        "x8j" = "Ability to diagnose or treat",
-                        "x8k" = "Risk management concerns")
-  )
-
-# -------------------------
-# 4) COMBINE ALL
-# -------------------------
-q8_all <- bind_rows(q8_legal, q8_tech, q8_clin) %>%
-  filter(!is.na(Score)) %>%
-  mutate(
-    Score = factor(
-      Score,
-      levels = 1:5,
-      labels = c(
-        "1 = Not concerned at all",
-        "2",
-        "3",
-        "4",
-        "5 = Very concerned"
-      ),
-      ordered = TRUE
-    ),
-    Domain = factor(Domain,
-                    levels = c("Legal or ethical issues", "Technological issues", "Clinical management difficulties"))
-  )
-
-q8_dist_all <- q8_all %>%
-  group_by(Domain, Item_label, Score) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(Domain, Item_label) %>%
-  mutate(
-    Percent = 100 * n / sum(n),
-    Label = ifelse(Percent >= 5, paste0(round(Percent), "%"), "")
-  ) %>%
-  ungroup()
-
-likert_cols <- c(
-  "1 = Not concerned at all" = "#607d8b",
-  "2"                       = "#90a4ae",
-  "3"                       = "#cfd8dc",
-  "4"                       = "#d9b39c",
-  "5 = Very concerned"      = "#c9706a"
-)
-
-
-ggplot(q8_dist_all, aes(x = Item_label, y = Percent, fill = Score)) +
-  geom_col(
-    width = 0.6,
-    position = position_stack(reverse = TRUE),
-    show.legend = TRUE
-  ) +
-  geom_text(
-    aes(
-      label = ifelse(Percent < 5, "", paste0(round(Percent), "%")),
-      group = Score
-    ),
-    position = position_stack(vjust = 0.5, reverse = TRUE),
-    size = 3,
-    colour = "black"
-  ) +
-  coord_flip() +
-  facet_wrap(
-    ~ Domain,
-    ncol = 1,
-    scales = "free_y",
-    space = "free_y",
-    strip.position = "top"
-  ) +
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 28)) +
-  scale_y_continuous(
-    limits = c(0, 100),
-    breaks = seq(0, 100, 20),
-    labels = function(x) paste0(x, "%"),
-    expand = c(0, 0)
-  ) +
-  scale_fill_manual(
-    values = likert_cols,
-    limits = names(likert_cols),
-    drop = FALSE,
-    name = "Response"
-  ) +
-  labs(
-    title = "Clinician-reported areas of concern about teleconsultation",
-    x = NULL,
-    y = "Percentage of responses"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor = element_blank(),
-    legend.position = "right",
-    strip.text = element_text(face = "bold"),
-    strip.background = element_rect(fill = "grey95", colour = NA)
   )
