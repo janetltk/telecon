@@ -24,18 +24,18 @@ q9_long <- q9 %>%
 
 # Question text for axis labels
 q9_labels <- c(
-  "9a" = "9a Clinician-side technical problems",
-  "9b" = "9b Patient-side technical problems",
-  "9c" = "9c Problems not resolvable by clinician",
-  "9d" = "9d Nobody available to help resolve problems"
+  "9a" = "Clinician-side technical problems",
+  "9b" = "Patient-side technical problems",
+  "9c" = "Problems not resolvable by clinician",
+  "9d" = "Nobody available to help resolve problems"
 )
 
 # Recode numeric scores to ordered factor with full legend labels
 q9_long <- q9_long %>%
   mutate(
     Question = factor(Question,
-                      levels = c("x9a", "x9b", "x9c", "x9d"),
-                      labels = q9_labels[c("9a", "9b", "9c", "9d")]),
+                      levels = c("x9d", "x9c", "x9b", "x9a"),
+                      labels = q9_labels[c("9d", "9c", "9b", "9a")]),
     Score = factor(
       Score,
       levels = 1:5,
@@ -60,6 +60,7 @@ q9_dist <- q9_long %>%
   ) %>%
   ungroup()
 
+
 # Colour palette (from low to high frequency)
 likert_cols <- c(
   "1 = Never"    = "#607d8b",
@@ -73,7 +74,8 @@ ggplot(q9_dist, aes(x = Question, y = Percent, fill = Score)) +
   geom_col(
     width = 0.6,
     position = position_stack(reverse = TRUE),
-    show.legend = TRUE
+    show.legend = TRUE,
+    colour = "black",   # add this
   ) +
   geom_text(
     aes(
@@ -104,7 +106,7 @@ ggplot(q9_dist, aes(x = Question, y = Percent, fill = Score)) +
     name = "Response"
   ) +
   labs(
-    title = "Clinicians-reported technical issues during consultation",
+    title = "Clinicians-reported occurrence of technical issues during consultation",
     x = NULL,
     y = "Percentage of responses"
   ) +
@@ -114,3 +116,4 @@ ggplot(q9_dist, aes(x = Question, y = Percent, fill = Score)) +
     panel.grid.minor = element_blank(),
     legend.position = "right"
   )
+
