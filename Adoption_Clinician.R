@@ -5,7 +5,6 @@ library(ggplot2)
 library(janitor)
 library(stringr)
 
-
 raw_data <- read_excel("Clinician Response 0725.xlsx") %>%
   clean_names()
 
@@ -492,21 +491,15 @@ ggplot(q8_dist, aes(x = Question, y = Percent, fill = Score)) +
   )
 
 # doctor-patient relationships ==========
-data <- read_excel("Clinician Response 0725.xlsx")
 
-# If columns are named 7a, 7b, 7c, 7d
 q7 <- data %>%
-  select(x7a = `7a`, x7b = `7b`, x7c = `7c`, x7d = `7d`)
-
-# If columns are already named x7a, x7b, x7c, x7d, use this instead:
-# q7 <- data %>%
-#   select(x7a, x7b, x7c, x7d)
+select(x7f, x7d, x7c, x7b, x7a)
 
 # Convert to long format
 q7_long <- q7 %>%
   mutate(Respondent = row_number()) %>%
   pivot_longer(
-    cols = c(x7a, x7b, x7c, x7d),
+    cols = c(x7f, x7d, x7c, x7b, x7a),
     names_to = "Question",
     values_to = "Score"
   ) %>%
@@ -518,15 +511,16 @@ q7_labels <- c(
   "x7a" = "Sharing rapport",
   "x7b" = "Listen to patients better",
   "x7c" = "Take patients' perspectives better",
-  "x7d" = "Empathise with patients"
+  "x7d" = "Empathise with patients",
+  "x7f" = "Improve clinical care"
 )
 
 q7_long <- q7_long %>%
   mutate(
     Question = factor(
       Question,
-      levels = c("x7a", "x7b", "x7c", "x7d"),
-      labels = q7_labels[c("x7a", "x7b", "x7c", "x7d")]
+      levels = c("x7f", "x7d", "x7c", "x7b", "x7a"),
+      labels = q7_labels[c("x7f", "x7d", "x7c", "x7b", "x7a")]
     )
   )
 
@@ -603,7 +597,6 @@ likert_cols <- c(
 )
 
 # Plot
-
 ggplot(q7_plot) +
   geom_rect(
     aes(
@@ -639,7 +632,7 @@ ggplot(q7_plot) +
   scale_x_continuous(
     breaks = seq(-100, 100, 20),
     labels = function(x) paste0(abs(x), "%"),
-    limits = c(-80, 80),
+    limits = c(-100, 100),
     expand = c(0, 0)
   ) +
   scale_fill_manual(
@@ -664,4 +657,353 @@ ggplot(q7_plot) +
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
     legend.position = "right"
+  )
+
+# (5) Efficiency, overall preference==========
+
+data <- read_excel("Clinician Response 0725.xlsx") %>%
+  clean_names()
+
+q7 <- data %>%
+  select(x7e, x7g, x7h, x7i)
+
+# Convert to long format
+q7_long <- q7 %>%
+  mutate(Respondent = row_number()) %>%
+  pivot_longer(
+    cols = c(x7e, x7g, x7h, x7i),
+    names_to = "Question",
+    values_to = "Score"
+  ) %>%
+  filter(!is.na(Score)) %>%
+  mutate(Score = as.numeric(Score))
+
+# Question labels
+q7_labels <- c(
+  "x7e" = "Efficiency",
+  "x7g" = "Overall benefitting patients",
+  "x7h" = "Overall benefitting clinicians",
+  "x7i" = "Overall satisfaction"
+)
+
+q7_long <- q7_long %>%
+  mutate(
+    Question = factor(
+      Question,
+      levels = c("x7i", "x7h", "x7g", "x7e"),
+      labels = q7_labels[c("x7i", "x7h", "x7g", "x7e")]
+    )
+  )
+
+# Count responses and fill missing categories with 0
+q7_dist <- q7_long %>%
+  count(Question, Score, name = "n") %>%
+  complete(
+    Question,
+    Score = 1:5,
+    fill = list(n = 0)
+  ) %>%
+  group_by(Question) %>%
+  mutate(
+    Percent = 100 * n / sum(n)
+  ) %>%
+  ungroup()
+
+# Add display labels for Likert categories
+q7_dist <- q7_dist %>%
+  mutate(
+    Score_f = factor(
+      Score,
+      levels = c(5, 4, 3, 2, 1),
+      labels = c(
+        "5 = Teleconsultation was better",
+        "4",
+        "3 = No difference",
+        "2",
+        "1 = Teleconsultation was worse"
+      )
+    )
+  )
+
+# Build diverging bar positions
+# 5 and 4 = left
+# 3 = centre
+# 2 and 1 = right
+q7_plot <- q7_dist %>%
+  group_by(Question) %>%
+  mutate(
+    p1 = Percent[Score == 1],
+    p2 = Percent[Score == 2],
+    p3 = Percent[Score == 3],
+    p4 = Percent[Score == 4],
+    p5 = Percent[Score == 5]
+  ) %>%
+  ungroup() %>%
+  mutate(
+    xmin = case_when(
+      Score == 5 ~ -(p5 + p4 + p3 / 2),
+      Score == 4 ~ -(p4 + p3 / 2),
+      Score == 3 ~ -(p3 / 2),
+      Score == 2 ~  (p3 / 2),
+      Score == 1 ~  (p3 / 2 + p2)
+    ),
+    xmax = case_when(
+      Score == 5 ~ -(p4 + p3 / 2),
+      Score == 4 ~ -(p3 / 2),
+      Score == 3 ~  (p3 / 2),
+      Score == 2 ~  (p3 / 2 + p2),
+      Score == 1 ~  (p3 / 2 + p2 + p1)
+    ),
+    label_x = (xmin + xmax) / 2,
+    label = ifelse(Percent >= 5, paste0(round(Percent), "%"), "")
+  )
+
+# Colours
+likert_cols <- c(
+  "5 = Teleconsultation was better" = "#607d8b",
+  "4" = "#90a4ae",
+  "3 = No difference" = "#cfd8dc",
+  "2" = "#d9b39c",
+  "1 = Teleconsultation was worse" = "#c9706a"
+)
+
+# Plot
+ggplot(q7_plot) +
+  geom_rect(
+    aes(
+      xmin = xmin,
+      xmax = xmax,
+      ymin = as.numeric(Question) - 0.3,
+      ymax = as.numeric(Question) + 0.3,
+      fill = Score_f
+    ),
+    colour = "black",
+    linewidth = 0.3
+  ) +
+  geom_text(
+    aes(
+      x = label_x,
+      y = as.numeric(Question),
+      label = label
+    ),
+    size = 3,
+    colour = "black"
+  ) +
+  geom_vline(
+    xintercept = 0,
+    colour = "grey70",
+    linetype = "dashed",
+    linewidth = 0.3
+  ) +
+  scale_y_continuous(
+    breaks = seq_along(levels(q7_plot$Question)),
+    labels = levels(q7_plot$Question),
+    expand = expansion(add = c(0.5, 0.5))
+  ) +
+  scale_x_continuous(
+    breaks = seq(-100, 100, 20),
+    labels = function(x) paste0(abs(x), "%"),
+    limits = c(-100, 100),
+    expand = c(0, 0)
+  ) +
+  scale_fill_manual(
+    values = likert_cols,
+    limits = c(
+      "5 = Teleconsultation was better",
+      "4",
+      "3 = No difference",
+      "2",
+      "1 = Teleconsultation was worse"
+    ),
+    drop = FALSE,
+    name = "Response"
+  ) +
+  labs(
+    title = "Clinicians-reported preference of teleconsultation compared to face-to-face consultation",
+    x = "Percentage of responses",
+    y = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+
+
+##############
+
+# (1-3) combined together ============
+
+data <- read_excel("Clinician Response 0725.xlsx") %>%
+  clean_names()
+
+q8_legal <- data %>%
+  select(x8a, x8b, x8c, x8d) %>%
+  mutate(Respondent = row_number()) %>%
+  pivot_longer(
+    cols = c(x8a, x8b, x8c, x8d),
+    names_to = "Item",
+    values_to = "Score"
+  ) %>%
+  mutate(
+    Domain = "Legal / ethical",
+    Item_label = recode(Item,
+                        "x8a" = "Ethical issues",
+                        "x8b" = "Data security",
+                        "x8c" = "Patient confidentiality",
+                        "x8d" = "Legal issues"
+    )
+  )
+
+q8_tech <- data %>%
+  select(x8g, x8l) %>%
+  mutate(Respondent = row_number()) %>%
+  pivot_longer(
+    cols = c(x8g, x8l),
+    names_to = "Item",
+    values_to = "Score"
+  ) %>%
+  mutate(
+    Domain = "Technological",
+    Item_label = recode(Item,
+                        "x8g" = "Unfamiliarity with tech requirements",
+                        "x8l" = "Tech issues interrupting patient care"
+    )
+  )
+
+q8_clin <- data %>%
+  select(x8e, x8f, x8h, x8j, x8k) %>%
+  mutate(Respondent = row_number()) %>%
+  pivot_longer(
+    cols = c(x8e, x8f, x8h, x8j, x8k),
+    names_to = "Item",
+    values_to = "Score"
+  ) %>%
+  mutate(
+    Domain = "Clinical management",
+    Item_label = recode(Item,
+                        "x8e" = "Lack professional guidance",
+                        "x8f" = "Lack training",
+                        "x8h" = "Need to adjust interview styles",
+                        "x8j" = "Ability to diagnose or treat",
+                        "x8k" = "Risk management concerns"
+    )
+  )
+
+q8_all <- bind_rows(q8_legal, q8_tech, q8_clin) %>%
+  filter(!is.na(Score)) %>%
+  mutate(
+    Domain = factor(
+      Domain,
+      levels = c("Legal / ethical", "Technological", "Clinical management")
+    ),
+    Item_label = case_when(
+      Domain == "Legal / ethical" ~ factor(
+        Item_label,
+        levels = c(
+          "Legal issues",
+          "Patient confidentiality",
+          "Data security",
+          "Ethical issues"
+        )
+      ),
+      Domain == "Technological" ~ factor(
+        Item_label,
+        levels = c(
+          "Tech issues interrupting patient care",
+          "Unfamiliarity with tech requirements"
+        )
+      ),
+      Domain == "Clinical management" ~ factor(
+        Item_label,
+        levels = c(
+          "Risk management concerns",
+          "Ability to diagnose or treat",
+          "Need to adjust interview styles",
+          "Lack training",
+          "Lack professional guidance"
+        )
+      )
+    ),
+    Score = factor(
+      Score,
+      levels = 1:5,
+      labels = c(
+        "1 = Not concerned at all",
+        "2",
+        "3",
+        "4",
+        "5 = Very concerned"
+      ),
+      ordered = TRUE
+    )
+  )
+
+q8_dist_all <- q8_all %>%
+  group_by(Domain, Item_label, Score) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Domain, Item_label) %>%
+  mutate(
+    Percent = 100 * n / sum(n),
+    Label = ifelse(Percent >= 5, paste0(round(Percent), "%"), "")
+  ) %>%
+  ungroup()
+
+likert_cols <- c(
+  "1 = Not concerned at all" = "#607d8b",
+  "2" = "#90a4ae",
+  "3" = "#cfd8dc",
+  "4" = "#d9b39c",
+  "5 = Very concerned" = "#c9706a"
+)
+
+ggplot(q8_dist_all, aes(x = Item_label, y = Percent, fill = Score)) +
+  geom_col(
+    width = 0.7,
+    position = position_stack(reverse = TRUE),
+    show.legend = TRUE,
+    colour = "black"
+  ) +
+  geom_text(
+    aes(
+      label = ifelse(Percent < 5, "", paste0(round(Percent), "%")),
+      group = Score
+    ),
+    position = position_stack(vjust = 0.5, reverse = TRUE),
+    size = 3,
+    colour = "black"
+  ) +
+  coord_flip() +
+  facet_wrap(
+    ~ Domain,
+    ncol = 1,
+    scales = "free_y",
+    strip.position = "top"
+  ) +
+  scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 28)) +
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, 20),
+    labels = function(x) paste0(x, "%"),
+    expand = c(0, 0)
+  ) +
+  scale_fill_manual(
+    values = likert_cols,
+    limits = names(likert_cols),
+    drop = FALSE,
+    name = "Response"
+  ) +
+  labs(
+    title = "Clinician-reported concerns about teleconsultation by themes",
+    x = NULL,
+    y = "Percentage of responses"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    strip.text.y.left = element_text(face = "bold", angle = 0),
+    strip.background = element_rect(fill = "grey95", colour = NA)
   )
