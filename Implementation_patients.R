@@ -6,7 +6,7 @@ library(tidyr)
 library(forcats)
 library(scales)
 
-# Load cleaned data
+# Load data
 df <- read_excel("Data Collection Form 0725.xlsx")
 df <- df %>% clean_names()
 nrow(df)
