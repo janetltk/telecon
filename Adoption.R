@@ -3,7 +3,7 @@ library(ggplot2)
 library(readr)
 
 # Load cleaned data
-df <- readRDS("0719_clean.rds")
+df <- readRDS("0701_clean.rds")
 
 # Check hostel and tele_group_factor
 tab_hostel_tele <- table(df$hostel, df$tele_group_factor, useNA = "ifany")

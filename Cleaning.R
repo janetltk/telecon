@@ -2,7 +2,7 @@ library(dplyr)
 library(readxl)
 library(janitor)
 
-df <- read_excel("Data Collection Form 0719.xlsx")
+df <- read_excel("~/Telemed/Data Collection Form 0725.xlsx")
 View(df)
 
 # (A) Data Cleaning
@@ -33,7 +33,8 @@ df <- df %>%
     tele_num   = as.numeric(tele_num),  # count of teleconsultations
     year_fu_mhs = as.numeric(2026 - fu_mhs),
     year_fu_tmmhc = as.numeric(2026 - fu_tmmhc),
-    year_enter_lsch = as.numeric(2026 - enter_lsch)
+    year_enter_lsch = as.numeric(2026 - enter_lsch),
+    tele_prop = as.numeric(tele_prop)
   )
 
 # Convert baseline and final clinical scales to numeric (if any came in as character)
@@ -218,4 +219,4 @@ table(df$pt_wish_is_yes)
 table(df$tele_sens_factor)
 
 # Save the cleaned data as an RDS (R internal format)
-saveRDS(df, file = "0719_clean.rds")
+saveRDS(df, file = "~/Telemed/0922_clean.rds")

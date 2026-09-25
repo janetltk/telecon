@@ -8,11 +8,8 @@ library(scales)
 
 # Load data and keep only teleconsultation-group participants
 # who also completed the follow-up assessment
-df <- readRDS("~/Telemed/0719_clean.rds")
 
-tele_df <- df %>%
-  filter(tele_num >= 1, !is.na(f_ax_date))
-
+df <- readRDS("~/Telemed/0922_tele.rds")
 summary(tele_df)
 
 
@@ -158,7 +155,7 @@ plot_specs <- tibble::tibble(
       "I did not need an explanation")
   ),
   topic = c(
-    "Patients' perceived time difference between the stated time and the actual time of seeing doctor",
+    "Patients' perceived waiting time before seeing doctor",
     "Patients' perceived doctor's awareness of own medical history",
     "Patients' perceived duration of consultation",
     "Patients' perceived amount of information given about own condition or treatment",
@@ -200,10 +197,10 @@ plot_item_bar <- function(long_df, topic, x_lab, n_paired) {
     facet_wrap(~ Time, nrow = 1) +
     labs(
       title = paste0(topic,
-                     "\n8 months pre-teleconsultation vs 8 months after ",
-                     "(teleconsultation group, n = ", n_paired, ")"),
+                     "\n among participants receiving at least 1 teleconsultation in the 8-month study period"
+                     ),
       x = x_lab,
-      y = "Number of respondents"
+      y = "Number of participants"
     ) +
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5),
@@ -235,11 +232,9 @@ plot_item_stacked <- function(long_df, topic, n_paired) {
     scale_fill_brewer(palette = "Reds") +
     labs(
       title = paste0(topic,
-                     "\n8 months pre-teleconsultation vs 8 months after ",
-                     "incorporation of teleconsultation",
-                     "\n(teleconsultation group having completed both ",
-                     "baseline and final assessments, n = ", n_paired, ")"),
-      x = "", y = "Percentage of respondents", fill = "Legend"
+                     "\n among participants receiving at least 1 teleconsultation in the 8-month study period"
+      ),
+      x = "", y = "Percentage of participants", fill = "Legend"
     ) +
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))

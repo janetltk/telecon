@@ -2,8 +2,9 @@ library(dplyr)
 library(readxl)
 library(janitor)
 library(ggplot2)
+library(scales)
 
-df <- readRDS("~/Telemed/0719_clean.rds")
+df <- readRDS("~/Telemed/0922_clean.rds")
 
 # Basic characteristics
 summary(df$age)
@@ -14,6 +15,7 @@ summary(df$year_enter_lsch)
 summary(df$year_enter_lsch, na.rm = TRUE)
 summary(df$year_fu_tmmhc, na.rm = TRUE)
 summary(df$bl_sat)
+
 
 # Make a pie chart of how many teleconsultations were given-----
 # 1. Create a summary data frame
@@ -52,6 +54,48 @@ ggplot(tele_df, aes(x = "", y = n, fill = factor(tele_num))) +
             position = position_stack(vjust = 0.5),
             size = 4)
 
+### Alternative: use bar chart
+tele_df <- df %>%
+  count(tele_num, name = "n") %>%
+  mutate(
+    tele_num = factor(tele_num, levels = c(0, 1, 2, 3, 4)),
+    perc = n / sum(n)
+  )
+
+ggplot(
+  tele_df,
+  aes(
+    x = reorder(tele_num, -as.numeric(tele_num)),
+    y = n,
+    fill = tele_num
+  )
+) +
+  geom_col(width = 0.7, show.legend = FALSE, colour = "black",
+           linewidth = 0.3) +
+  geom_text(
+    aes(label = paste0(n, " (", scales::percent(perc, accuracy = 0.1), ")")),
+    hjust = -0.1,
+    size = 4
+  ) +
+  coord_flip() +
+  scale_fill_manual(values = c("#C9706A", "#D9B39C", "#CFD8DC", "#90A4AE", "#607D8B")) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.18))
+  ) +
+  labs(
+    title = "Number of teleconsultations received by each study participant \n during the 8-month study period (N = 140)",
+    x = "Number of teleconsultations",
+    y = "Number of participants"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line.x = element_line(colour = "grey60", linewidth = 0.6),
+    geom_hline(yintercept = 0, colour = "grey60", linewidth = 0.6)
+  )
+
 # Comparison of n group-----
 
 #1. Age: numeric variable
@@ -76,6 +120,8 @@ hist(df$age[df$tele_group_factor == "No_tele"],
      main = "Age - No tele", xlab = "Age")
 hist(df$age[df$tele_group_factor == "At_least_1_tele"],
      main = "Age - ≥1 tele", xlab = "Age")
+
+shapiro.test(df$age)
 
 #Step 3 – t‑test (if distribution looks ok)
 
@@ -127,6 +173,8 @@ fu_mhs_summary
 hist(df$year_fu_mhs[df$tele_group == 0], main = "Years FU MHS - No tele", xlab = "Year followed up in MHS")
 hist(df$year_fu_mhs[df$tele_group == 1], main = "Years FU MHS - ≥1 tele", xlab = "Year followed up in MHS")
 
+shapiro.test(df$year_fu_mhs)
+
 #t test if normally distributed
 t_fu_mhs <- t.test(year_fu_mhs ~ tele_group_factor, data = df)
 t_fu_mhs
@@ -151,6 +199,9 @@ fu_tmmhc_summary
 # quick histogram to eyeball distribution
 hist(df$year_fu_tmmhc[df$tele_group == 0], main = "Years FU TMMHC - No tele", xlab = "Years followed up in TMMHC")
 hist(df$year_fu_tmmhc[df$tele_group == 1], main = "Years FU TMMHC - ≥1 tele", xlab = "Years followed up in TMMHC")
+
+shapiro.test(df$year_fu_tmmhc)
+
 
 #t test if normally distributed
 t_fu_tmmhc <- t.test(year_fu_tmmhc ~ tele_group_factor, data = df)
@@ -214,6 +265,20 @@ chisq.test(tab_dx2)
 # Fisher if not
 fisher_dx2 <- fisher.test(tab_dx2)
 fisher_dx2
+
+#6. LSCH: categorical variable
+tab_hostel <- table(df$tele_group_factor, df$hostel)
+tab_hostel
+
+#Step 2 – check expected counts
+chisq.test(tab_hostel)$expected
+
+chi_hostel <- chisq.test(tab_hostel, correct = FALSE)
+chi_hostel
+
+fisher_hostel <- fisher.test(tab_hostel)
+fisher_hostel
+
 
 ## repeat everything for sensitivity analysis
 
@@ -615,10 +680,11 @@ model_uptake <- glm(
 summary(model_uptake)
 
 model_final <- glm(
-  tele_group ~ hostel + year_fu_mhs+ year_enter_lsch,
+  tele_group ~ hostel + escort + sopeq_b_4_num + year_fu_mhs + year_enter_lsch,
   data = df, family = binomial
 )
 summary(model_final)
+exp(cbind(OR = coef(model_final), confint(model_final)))
 
 # sensitivity analysis-----
 
@@ -646,6 +712,8 @@ exp(confint(m_hostel))
 
 m_escort <- glm(tele_sens ~ escort, data = df, family = binomial)
 summary(m_escort)
+exp(coef(m_escort))
+exp(confint(m_escort))
 
 # clinical
 m_fu_mhs     <- glm(tele_sens ~ year_fu_mhs, data = df, family = binomial)
@@ -655,7 +723,6 @@ m_enter_lsch <- glm(tele_sens ~ year_enter_lsch, data = df, family = binomial)
 summary(m_fu_mhs);     exp(coef(m_fu_mhs));     exp(confint(m_fu_mhs))
 summary(m_fu_tmmhc);   exp(coef(m_fu_tmmhc));   exp(confint(m_fu_tmmhc))
 summary(m_enter_lsch); exp(coef(m_enter_lsch)); exp(confint(m_enter_lsch))
-
 
 m_dx1        <- glm(tele_sens ~ x1st_dx_group, data = df, family = binomial)
 m_dx2        <- glm(tele_sens ~ x2nd_dx_group, data = df, family = binomial)

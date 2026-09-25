@@ -86,7 +86,7 @@ ggplot(tele_long_nomiss, aes(x = item, fill = response)) +
   labs(
     x = NULL,
     y = "Percentage of respondents",
-    title = "Patient opinions on maintaining teleconsultation-incorporated outpatient care"
+    title = "Patients' opinions on maintaining teleconsultation-incorporated outpatient care"
   ) +
   coord_flip() +
   theme_minimal(base_size = 12) +

@@ -5,7 +5,7 @@ library(ggplot2)
 library(janitor)
 library(stringr)
 
-raw_data <- read_excel("Clinician Response 0725.xlsx") %>%
+raw_data <- read_excel("~/Telemed/Clinician Response 0922.xlsx") %>%
   clean_names()
 
 aim_iam_fim <- raw_data %>%
@@ -161,7 +161,7 @@ ggplot(dist_item, aes(x = Item_label, y = Percent, fill = Score)) +
 
 # Legal concerns =======================
 
-data <- read_excel("Clinician Response 0725.xlsx") %>%
+data <- read_excel("~/Telemed/Clinician Response 0922.xlsx") %>%
   clean_names()
 
 # Select Q8
@@ -661,7 +661,7 @@ ggplot(q7_plot) +
 
 # (5) Efficiency, overall preference==========
 
-data <- read_excel("Clinician Response 0725.xlsx") %>%
+data <- read_excel("~/Telemed/Clinician Response 0922.xlsx") %>%
   clean_names()
 
 q7 <- data %>%
@@ -835,7 +835,7 @@ ggplot(q7_plot) +
 
 # (1-3) combined together ============
 
-data <- read_excel("Clinician Response 0725.xlsx") %>%
+data <- read_excel("~/Telemed/Clinician Response 0922.xlsx") %>%
   clean_names()
 
 q8_legal <- data %>%

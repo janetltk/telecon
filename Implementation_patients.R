@@ -7,7 +7,7 @@ library(forcats)
 library(scales)
 
 # Load data
-df <- read_excel("Data Collection Form 0725.xlsx")
+df <- read_excel("~/Telemed/Data Collection Form 0725.xlsx")
 df <- df %>% clean_names()
 nrow(df)
 

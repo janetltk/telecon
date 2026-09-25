@@ -6,9 +6,10 @@ library(janitor)
 library(stringr)
 
 # Load Excel-----
-data <- read_excel("Clinician Response 0726.xlsx")
+data <- read_excel("~/Telemed/Clinician Response 0922.xlsx")
 str(data)  # quick check of column names / types
 data <- data %>% clean_names()
+data <- data[1:11, ]
 
 # (1) Technical issues ==================
 

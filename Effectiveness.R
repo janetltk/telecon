@@ -1,12 +1,16 @@
+
 # Load packages
 library(dplyr)    # for data manipulation
 library(ggplot2)
 library(tidyr)
+library(DescTools)
+
 
 # 1. Read data-----
 
 # Set your path to the Excel file
-df <- readRDS("~/Telemed/0719_clean.rds")
+
+df <- readRDS("~/Telemed/0922_clean.rds")
 
 # Keep only teleconsultation group
 tele_df <- df %>%
@@ -16,9 +20,17 @@ tele_df$bl_cgi <- as.numeric(tele_df$bl_cgi)
 tele_df$f_cgi <- as.numeric(tele_df$f_cgi)
 tele_df$bl_sat <- as.numeric(tele_df$bl_sat)
 tele_df$f_sat <- as.numeric(tele_df$f_sat)
+tele_df$bl_honos <- as.numeric(tele_df$bl_honos)
+tele_df$f_honos <- as.numeric(tele_df$f_honos)
 
-saveRDS(tele_df, file = "0719_tele.rds")
-tele_df <- readRDS("~/Telemed/0719_tele.rds")
+saveRDS(tele_df, file = "~/Telemed/0922_tele.rds")
+
+summary(tele_df$f_honos - tele_df$bl_honos)
+sd(tele_df$f_honos - tele_df$bl_honos, na.rm = TRUE)
+
+summary(tele_df$f_cgi - tele_df$bl_cgi)
+sd(tele_df$f_cgi - tele_df$bl_cgi, na.rm = TRUE)
+
 
 # Simple graphs
 # function
@@ -113,9 +125,107 @@ plot_bl_f_hist(
   f_var   = "f_sat",
   binwidth = 1,
   x_label = "Satisfaction score",
-  title   = "Satisfaction score towards overall OPD experience in the \n 8 months pre-teleconsultation vs 8 months after incorporation of teleconsultation \n(Teleconsultation group having completed both baseline and final assessments, n = 87)"
+  title   = "Overall satisfaction score reflecting the whole outpatient experience \n among participants receiving at least 1 teleconsultation in the 8-month study period"
 )
 
+
+
+
+# descriptive data------
+
+tele_df$bl_bd_cat <- as.factor(tele_df$bl_bd)
+summary(tele_df$bl_bd_cat)
+tele_df$f_bd_cat <- as.factor(tele_df$f_bd)
+summary(tele_df$f_bd_cat)
+
+tele_df$bl_aed_cat <- as.factor(tele_df$bl_aed)
+summary(tele_df$bl_aed_cat)
+tele_df$f_aed_cat <- as.factor(tele_df$f_aed)
+summary(tele_df$f_aed_cat)
+
+tele_df$bl_ip
+tele_df$f_ip
+
+tele_df$bl_cgi <- as.factor(tele_df$bl_cgi)
+summary(tele_df$bl_cgi)
+tele_df$f_cgi <- as.factor(tele_df$f_cgi)
+summary(tele_df$f_cgi)
+
+# Stuard-Maxwell test for categorical data
+
+cgi_df <- tele_df %>%
+  filter(
+    !is.na(f_cgi)
+  )
+summary(cgi_df$bl_cgi)
+
+cgi_table <- table(
+  Baseline = cgi_df$bl_cgi,
+  Follow_up = cgi_df$f_cgi
+)
+
+StuartMaxwellTest(cgi_table)
+
+##
+
+tele_df$bl_honos <- as.factor(tele_df$bl_honos)
+tele_df$f_honos <- as.factor(tele_df$f_honos)
+summary(tele_df$f_honos)
+
+honos_df <- tele_df %>%
+  filter(
+    !is.na(f_honos)
+  )
+summary(honos_df$bl_honos)
+
+honos_table <- table(
+  Baseline = honos_df$bl_honos,
+  Follow_up = honos_df$f_honos
+)
+
+StuartMaxwellTest(honos_table)
+
+##
+
+tele_df$bl_sat <- as.factor(tele_df$bl_sat)
+tele_df$f_sat <- as.factor(tele_df$f_sat)
+summary(tele_df$f_sat)
+
+sat_df <- tele_df %>%
+  filter(
+    !is.na(f_sat)
+  ) %>%
+  filter(
+    !is.na(bl_sat)
+  )
+summary(sat_df$bl_sat)
+summary(sat_df$f_sat)
+
+mean(as.numeric(sat_df$bl_sat))
+
+all_levels <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
+sat_df$bl_sat <- factor(sat_df$bl_sat, levels = all_levels)
+sat_df$f_sat <- factor(sat_df$f_sat, levels = all_levels)
+
+sat_table <- table(
+  Baseline = sat_df$bl_sat,
+  Follow_up = sat_df$f_sat
+)
+
+StuartMaxwellTest(sat_table)
+
+sat_df$bl_sat <- as.numeric(sat_df$bl_sat)
+sat_df$f_sat <- as.numeric(sat_df$f_sat)
+
+
+plot_bl_f_hist(
+  data    = sat_df,
+  bl_var  = "bl_sat",
+  f_var   = "f_sat",
+  binwidth = 1,
+  x_label = "Satisfaction score",
+  title   = "Overall satisfaction score reflecting the whole outpatient experience \n among participants receiving at least 1 teleconsultation in the 8-month study period"
+)
 
 # 2. Check normality-----
 # Function: compute paired differences and Shapiro–Wilk
@@ -166,14 +276,14 @@ check_normality <- function(data, bl_var, f_var, make_plots = TRUE) {
 
 # Run normality checks for each pair
 
-norm_OPD <- check_normality(tele_df, "bl_opd", "f_opd", make_plots = TRUE)
-norm_BD  <- check_normality(tele_df, "bl_bd",  "f_bd",  make_plots = TRUE)
-norm_AED <- check_normality(tele_df, "bl_aed", "f_aed", make_plots = TRUE)
-norm_IP  <- check_normality(tele_df, "bl_ip",  "f_ip",  make_plots = TRUE)
-norm_CGI <- check_normality(tele_df, "bl_cgi",  "f_cgi",  make_plots = TRUE)
-norm_HONOS <- check_normality(tele_df, "bl_honos", "f_honos",  make_plots = TRUE)
-norm_SWEMWBS <- check_normality(tele_df, "bl_swemwbs", "f_swemwbs",  make_plots = TRUE)
-norm_sat <- check_normality(tele_df, "bl_sat", "f_sat",  make_plots = TRUE)
+norm_OPD <- check_normality(tele_df, "bl_opd", "f_opd", make_plots = FALSE)
+norm_BD  <- check_normality(tele_df, "bl_bd",  "f_bd",  make_plots = FALSE)
+norm_AED <- check_normality(tele_df, "bl_aed", "f_aed", make_plots = FALSE)
+norm_IP  <- check_normality(tele_df, "bl_ip",  "f_ip",  make_plots = FALSE)
+
+norm_HONOS <- check_normality(tele_df, "bl_honos", "f_honos",  make_plots = FALSE)
+norm_SWEMWBS <- check_normality(tele_df, "bl_swemwbs", "f_swemwbs",  make_plots = FALSE)
+norm_sat <- check_normality(sat_df, "bl_sat", "f_sat",  make_plots = FALSE)
 
 # 3. Paired t-tests for BL vs F-----
 
@@ -229,9 +339,33 @@ res_BD  <- paired_summary(tele_df, "bl_bd",  "f_bd")
 res_AED <- paired_summary(tele_df, "bl_aed", "f_aed")
 res_EMW <- paired_summary(tele_df, "bl_emw", "f_emw")
 res_IP  <- paired_summary(tele_df, "bl_ip",  "f_ip")
-res_CGI <- paired_summary(tele_df, "bl_cgi",  "f_cgi")
-res_HONOS <- paired_summary(tele_df, "bl_honos", "f_honos")
-res_SWEMWBS <- paired_summary(tele_df, "bl_swemwbs", "f_swemwbs")
+
+
+swemwbs_df <- tele_df %>%
+  filter(
+    !is.na(f_swemwbs)
+  )
+sum(is.na(swemwbs_df$f_swemwbs))
+
+res_SWEMWBS <- paired_summary(swemwbs_df, "bl_swemwbs", "f_swemwbs")
+res_SWEMWBS
+
+sum(swemwbs_df$bl_swemwbs >= 7 & swemwbs_df$bl_swemwbs <= 19.4, na.rm = TRUE)
+
+swemwbs_bl <- c(
+  sum(swemwbs_df$bl_swemwbs >= 7 & swemwbs_df$bl_swemwbs <= 19.4, na.rm = TRUE), 
+  sum(swemwbs_df$bl_swemwbs >= 19.5 & swemwbs_df$bl_swemwbs <= 27.4, na.rm = TRUE),
+  sum(swemwbs_df$bl_swemwbs >= 27.5, na.rm = TRUE)
+)
+swemwbs_bl
+
+swemwbs_f <- c(
+  sum(swemwbs_df$f_swemwbs >= 7 & swemwbs_df$f_swemwbs <= 19.4, na.rm = TRUE), 
+  sum(swemwbs_df$f_swemwbs >= 19.5 & swemwbs_df$f_swemwbs <= 27.4, na.rm = TRUE),
+  sum(swemwbs_df$f_swemwbs >= 27.5, na.rm = TRUE)
+)
+swemwbs_f
+
 res_sat <- paired_summary(tele_df, "bl_sat", "f_sat")
 
 # Combine all results into one table
@@ -312,19 +446,22 @@ tele_df$diff_honos <- tele_df$f_honos - tele_df$bl_honos
 summary(tele_df$diff_honos, useNA = "ifany")
 res_HONOS_w  <- wilcoxon_summary(tele_df, "bl_honos",  "f_honos")
 
-table(tele_df$bl_swemwbs, useNA = "ifany")
-table(tele_df$f_swemwbs, useNA = "ifany")
-tele_df$diff_swemwbs <- tele_df$f_swemwbs - tele_df$bl_swemwbs
-summary(tele_df$diff_swemwbs, useNA = "ifany")
-res_SWEMWBS_w  <- wilcoxon_summary(tele_df, "bl_swemwbs",  "f_swemwbs")
 
-table(tele_df$bl_sat, useNA = "ifany")
-table(tele_df$f_sat, useNA = "ifany")
-tele_df$diff_sat <- tele_df$f_sat - tele_df$bl_sat
-summary(tele_df$bl_sat)
-summary(tele_df$f_sat)
-summary(tele_df$diff_sat, useNA = "ifany")
-res_sat_w  <- wilcoxon_summary(tele_df, "bl_sat",  "f_sat")
+
+table(swemwbs_df$bl_swemwbs, useNA = "ifany")
+table(swemwbs_df$f_swemwbs, useNA = "ifany")
+swemwbs_df$diff_swemwbs <- swemwbs_df$f_swemwbs - swemwbs_df$bl_swemwbs
+summary(swemwbs_df$diff_swemwbs, useNA = "ifany")
+res_SWEMWBS_w  <- wilcoxon_summary(swemwbs_df, "bl_swemwbs",  "f_swemwbs")
+res_SWEMWBS_w
+
+table(sat_df$bl_sat, useNA = "ifany")
+table(sat_df$f_sat, useNA = "ifany")
+sat_df$diff_sat <- sat_df$f_sat - sat_df$bl_sat
+summary(sat_df$bl_sat)
+summary(sat_df$f_sat)
+summary(sat_df$diff_sat, useNA = "ifany")
+res_sat_w  <- wilcoxon_summary(sat_df, "bl_sat",  "f_sat")
 
 wilcoxon_results <- bind_rows(res_OPD_w, res_BD_w, res_AED_w, res_EMW_w, res_IP_w, res_CGI_w, res_HONOS_w, res_SWEMWBS_w, res_sat_w)
 wilcoxon_results
@@ -334,3 +471,6 @@ res_SWEMWBS_w  <- wilcoxon_summary(tele_df, "bl_swemwbs",  "f_swemwbs")
 ####
 res_sat_w  <- chisq.test(tele_df, "sopeq_b_2",  "sopeq_f_2")
 wilcoxon_results_SOPEQ <- bind_rows()
+
+
+summary
